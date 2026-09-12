@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nervous Bandits v0.2 — Mobile Playtest</title>
+<style>
+:root{
+  --ink:#251b2b; --paper:#f5ead2; --panel:#fff7e7; --gold:#b88732;
+  --wine:#6b2942; --green:#2f5d50; --shadow:0 12px 30px rgba(37,27,43,.18);
+}
+*{box-sizing:border-box} body{margin:0;background:
+radial-gradient(circle at 20% 10%,#fff4d7 0 10%,transparent 30%),
+linear-gradient(135deg,#ead8b8,#f7edd7 45%,#dcc59e);color:var(--ink);
+font-family:Georgia,"Times New Roman",serif;min-height:100vh}
+button{font:inherit;cursor:pointer;border:0}
+.app{max-width:1400px;margin:auto;padding:20px}
+header{display:flex;justify-content:space-between;align-items:end;gap:20px;border-bottom:2px solid #a77d3d;padding:4px 8px 14px}
+h1{margin:0;font-size:clamp(30px,5vw,58px);letter-spacing:.04em;color:#4c263d;text-shadow:1px 2px #e4c98e}
+.subtitle{font-style:italic;color:#684d3e}.scoreboard{display:flex;gap:12px;flex-wrap:wrap}
+.score{background:var(--panel);border:2px solid #9b7335;border-radius:12px;padding:10px 16px;box-shadow:var(--shadow);text-align:center}
+.score b{font-size:25px}.table{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:18px;margin-top:18px;align-items:start}
+.panel{background:rgba(255,247,231,.88);border:2px solid #a77d3d;border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.panel h2{margin:0 0 10px;color:#5a2940}.turn{font-size:14px;color:#6e5949;margin-bottom:12px}
+.stash{min-height:260px;display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start}
+.card{width:104px;height:150px;border-radius:12px;border:2px solid #6e4b35;background:
+linear-gradient(160deg,#fffaf0,#e9d3a7);box-shadow:5px 7px 12px rgba(50,30,20,.22);
+padding:8px;position:relative;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+.card .rank{font-size:30px;font-weight:bold;color:#6b2942}.card .name{font-size:12px;font-weight:bold;text-align:center}
+.card .art{font-size:52px;text-align:center;filter:drop-shadow(2px 3px 1px rgba(0,0,0,.18))}
+.card.mod{background:linear-gradient(160deg,#f8efd5,#cbd9c7);border-color:#426b5c}
+.card.trick{background:linear-gradient(160deg,#f6e3d2,#d5b2b8);border-color:#75405a}
+.card.bandit{background:linear-gradient(160deg,#eadcf4,#c4abc9);border-color:#684777;width:86px;height:120px}
+.center{text-align:center}.camp{min-height:150px;border:2px dashed #8b6b55;border-radius:14px;padding:12px;background:#efe0c2}
+.bandits{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;min-height:110px}
+.courage{font-size:22px;margin:10px 0;color:#6b2942}.meter{height:16px;background:#d9c6a7;border-radius:99px;overflow:hidden;border:1px solid #8f704b}.fill{height:100%;width:0;background:#6b2942;transition:.3s}
+.draw-area{margin-top:18px}.drawn{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;min-height:160px}
+.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.action{padding:12px 20px;border-radius:10px;background:#6b2942;color:#fff7e7;border:2px solid #401b2b;box-shadow:0 4px 0 #401b2b}
+.action.secondary{background:#2f5d50;border-color:#1d4037}.action:disabled{opacity:.45;cursor:not-allowed}
+.log{height:170px;overflow:auto;background:#211923;color:#f6e9cf;border-radius:12px;padding:10px;font:13px/1.45 ui-monospace,monospace}
+.rules{font-size:14px;line-height:1.45}.rules summary{cursor:pointer;font-weight:bold}
+.round-banner{margin:18px 0 0;padding:12px;text-align:center;background:#4c263d;color:#fff7e7;border-radius:12px;font-weight:bold}
+@media(max-width:900px){.table{grid-template-columns:1fr}.center{order:-1}.stash{min-height:150px}}
+</style>
+
+<style id="iphone-safari-optimizations">
+/* iPhone Safari / touch optimization */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: #17131f;
+}
+body {
+  margin: 0;
+  min-height: 100svh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+button, select, input, .card, [role="button"] {
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+}
+button {
+  min-height: 44px;
+}
+* {
+  box-sizing: border-box;
+}
+
+/* Make the game use the full safe area on iPhones with a Dynamic Island/notch. */
+.app, .container, main, .game, .page {
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+}
+header {
+  padding-top: max(10px, env(safe-area-inset-top));
+}
+footer {
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+
+/* Compact phones: reduce decorative whitespace and keep the board playable. */
+@media (max-width: 600px) {
+  body {
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: clamp(1.45rem, 7vw, 2rem);
+    line-height: 1.05;
+    margin: 8px 0 4px;
+  }
+
+  h2, h3 {
+    line-height: 1.1;
+  }
+
+  .container, .app, main {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Prevent cards from becoming too tiny when five are shown. */
+  .cards, .hand, .stash, .card-row, .player-cards {
+    gap: 6px !important;
+  }
+
+  .card {
+    min-width: 0;
+    flex: 1 1 0;
+    min-height: 104px;
+    border-radius: 12px;
+    padding: 7px !important;
+  }
+
+  .card button {
+    width: 100%;
+  }
+
+  /* Larger controls for thumb use. */
+  button, .btn, .button {
+    min-height: 46px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+
+  /* Avoid tiny inline controls. */
+  select {
+    min-height: 44px;
+    font-size: 16px; /* prevents Safari's focus zoom */
+  }
+
+  /* Logs should not consume the entire phone screen. */
+  .log, .play-log, .history {
+    max-height: 150px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Keep modal/rules panels usable above Safari's bottom bar. */
+  .modal, .overlay, .rules {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  /* Horizontal card strips can scroll rather than squish. */
+  .scroll-x, .card-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+}
+
+/* Very small iPhones (SE/mini class). */
+@media (max-width: 380px) {
+  body { font-size: 14px; }
+  .card {
+    min-height: 92px;
+    padding: 5px !important;
+  }
+  button, .btn, .button {
+    min-height: 44px;
+    padding: 9px 10px;
+    font-size: 14px;
+  }
+}
+
+/* Landscape iPhone: preserve usable vertical space. */
+@media (max-height: 500px) and (orientation: landscape) {
+  h1 { font-size: 1.35rem; margin: 2px 0; }
+  .card { min-height: 80px; }
+  .log, .play-log, .history { max-height: 90px; }
+}
+
+/* Remove the 300ms-ish feel and selection accidents during play. */
+button, .card, .btn, .button {
+  user-select: none;
+  -webkit-user-select: none;
+}
+</style>
+
+
+<style id="v02-rules-css">
+.protected-status{color:#2f5d50;font-weight:bold}
+.hideout-card{outline:3px solid rgba(184,135,50,.35)}
+@media(max-width:600px){
+  .actions{position:sticky;bottom:max(6px,env(safe-area-inset-bottom));z-index:5;
+    background:rgba(245,234,210,.94);padding:8px 4px;border-radius:14px;backdrop-filter:blur(8px)}
+  .actions .action{flex:1 1 42%;padding:10px 8px}
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+<header>
+  <div><h1>Nervous Bandits</h1><div class="subtitle">A rococo fantasy push-your-luck hand-building duel</div></div>
+  <div class="scoreboard">
+    <div class="score">You<br><b id="pScore">0</b></div>
+    <div class="score">Opponent<br><b id="oScore">0</b></div>
+    <div class="score">Round<br><b id="round">1</b></div>
+  </div>
+</header>
+
+<div class="round-banner" id="banner">Your turn — draw three.</div>
+
+<main class="table">
+<section class="panel">
+  <h2>Your Stash</h2><div class="turn" id="youStatus">Building your 5-card stash.</div>
+  <div class="stash" id="youStash"></div>
+</section>
+
+<section class="panel center">
+  <h2>The Shared Deck</h2>
+  <div class="card" style="margin:auto">
+    <div class="rank">✦</div><div class="art">🃏</div><div class="name">COMMON DECK</div>
+  </div>
+  <div class="draw-area"><h2>Drawn</h2><div class="drawn" id="drawn"></div></div>
+  <div class="actions">
+    <button class="action" id="drawBtn" onclick="drawThree()">PUSH — DRAW 3</button>
+    <button class="action secondary" id="hideBtn" onclick="hideTurn()">HIDE</button>
+    <button class="action secondary" id="rescueBtn" onclick="rescueFromHideout()">RESCUE</button>
+    <button class="action secondary" id="newBtn" onclick="newGame()">NEW GAME</button>
+  </div>
+  <h2 style="margin-top:18px">Nervous Bandit Camp</h2>
+  <div class="camp">
+    <div class="courage"><span id="courage">0</span> / <span id="threshold">6</span> Courage</div>
+    <div class="meter"><div class="fill" id="fill"></div></div>
+    <div class="bandits" id="bandits"></div>
+  </div>
+  <h2 style="margin-top:18px">Bandit Hideout</h2>
+  <div class="camp">
+    <div class="turn">Kidnapped cards persist between rounds. RESCUE takes one instead of pushing.</div>
+    <div class="bandits" id="hideout"></div>
+  </div>
+  <h2 style="margin-top:18px">Play Log</h2><div class="log" id="log"></div>
+</section>
+
+<section class="panel">
+  <h2>Opponent's Stash</h2><div class="turn" id="oppStatus">Opponent is thinking…</div>
+  <div class="stash" id="oppStash"></div>
+  <details class="rules" style="margin-top:15px"><summary>Prototype rules v0.2</summary>
+  <p>Players alternate one turn at a time. On your turn choose PUSH, HIDE, or RESCUE.</p>
+  <p><b>PUSH:</b> draw 3. All Bandits immediately join the Camp. Choose one remaining card for your 5-card stash. If full, the new card may replace your weakest card.</p>
+  <p><b>HIDE:</b> skip your draw and protect your stash from Bandits until your next turn. Two consecutive HIDEs end the round. Any PUSH or RESCUE resets the consecutive-HIDE count.</p>
+  <p><b>RESCUE:</b> if the Hideout contains kidnapped cards, take one into your stash instead of drawing. The Hideout persists between rounds.</p>
+  <p>At 6 Courage, the Bandits raid the current leader. They kidnap that player's highest-value creature unless that player is hiding. If the leader is hiding, they raid the other player if possible. Courage then resets.</p>
+  <p>At round end, compare stash scores. The higher score earns the difference. The loser starts the next round. First to 15 wins.</p></details>
+</section>
+</main>
+</div>
+
+<script>
+const creature = {
+1:["1","Moss Goblin","🧌"],2:["2","Moon Slug","🐌"],3:["3","Velvet Griffin","🦁"],
+4:["4","Bog Dragon","🐉"],5:["5","Royal Toad","🐸"]
+};
+const modifiers = [
+ {type:"mod",name:"Twin Moon",art:"☾☾",text:"Double the previous creature's value."},
+ {type:"mod",name:"Royal Decree",art:"👑",text:"Previous creature is worth +3."},
+ {type:"trick",name:"Backdoor",art:"🚪",text:"Put this card on the bottom of the deck and immediately draw 3 again."},
+ {type:"trick",name:"Velvet Rope",art:"🎀",text:"Prototype placeholder item. Counts as a stash card."}
+];
+const banditTypes = [
+ {name:"Nervous Bandit",art:"🦹",c:1},
+ {name:"Greedy Bandit",art:"🤑",c:1},
+ {name:"Cowardly Bandit",art:"😰",c:2},
+ {name:"Sneaky Bandit",art:"🥷",c:1}
+];
+
+let deck=[], you=[], opp=[], drawn=[], camp=[], hideout=[];
+let courage=0, threshold=6;
+let current="you", pScore=0, oScore=0, round=1, gameOver=false;
+let youHidden=false, oppHidden=false, consecutiveHides=0;
+let roundStarter="you";
+let awaitingChoice=false;
+
+function makeDeck(){
+  deck=[];
+  for(let v=1;v<=5;v++) for(let i=0;i<5;i++)
+    deck.push({type:"value",value:v,name:creature[v][1],art:creature[v][2]});
+  modifiers.forEach((m,i)=>{for(let j=0;j<2;j++) deck.push({...m,id:i})});
+  for(let i=0;i<10;i++){
+    const b=banditTypes[i%banditTypes.length];
+    deck.push({type:"bandit",...b});
+  }
+  shuffle(deck);
+}
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+function cardHTML(c){
+  let cls="card "+(c.type==="bandit"?"bandit":c.type==="mod"?"mod":c.type==="trick"?"trick":"");
+  let rank=c.type==="value"?c.value:(c.type==="bandit"?"☠":"✧");
+  return `<div class="${cls}" title="${c.text||""}">
+    <div class="rank">${rank}</div><div class="art">${c.art}</div><div class="name">${c.name}</div>
+  </div>`;
+}
+function renderStash(id,stash){
+  document.getElementById(id).innerHTML=stash.map(cardHTML).join("")||"<div style='opacity:.5'>No cards yet</div>";
+}
+function scoreHand(hand){
+  let total=hand.reduce((s,c)=>s+(c.type==="value"?c.value:0),0);
+  for(let i=1;i<hand.length;i++){
+    if(hand[i].name==="Twin Moon" && hand[i-1]?.type==="value") total+=hand[i-1].value;
+    if(hand[i].name==="Royal Decree" && hand[i-1]?.type==="value") total+=3;
+  }
+  return total;
+}
+function scoreContribution(c){ return c.type==="value"?c.value:0; }
+function log(s){
+  const el=document.getElementById("log");
+  el.innerHTML+=s+"<br>";
+  el.scrollTop=el.scrollHeight;
+}
+function render(){
+  renderStash("youStash",you);
+  renderStash("oppStash",opp);
+
+  if(!awaitingChoice)
+    document.getElementById("drawn").innerHTML=drawn.map(cardHTML).join("");
+
+  document.getElementById("bandits").innerHTML=camp.map(cardHTML).join("")||"<div style='opacity:.45'>The camp is quiet.</div>";
+  document.getElementById("hideout").innerHTML=hideout.map(c=>cardHTML(c)).join("")||"<div style='opacity:.45'>No kidnapped cards.</div>";
+  document.getElementById("courage").textContent=courage;
+  document.getElementById("fill").style.width=Math.min(100,courage/threshold*100)+"%";
+  document.getElementById("pScore").textContent=pScore;
+  document.getElementById("oScore").textContent=oScore;
+  document.getElementById("round").textContent=round;
+
+  const myTurn=current==="you" && !gameOver && !awaitingChoice;
+  document.getElementById("drawBtn").disabled=!myTurn;
+  document.getElementById("hideBtn").disabled=!myTurn;
+  document.getElementById("rescueBtn").disabled=!myTurn || hideout.length===0;
+
+  document.getElementById("youStatus").innerHTML =
+    `Stash: ${scoreHand(you)} pts · ${you.length}/5 cards` +
+    (youHidden ? ` · <span class="protected-status">HIDING 🛡️</span>` : "");
+  document.getElementById("oppStatus").innerHTML =
+    `Stash: ${scoreHand(opp)} pts · ${opp.length}/5 cards` +
+    (oppHidden ? ` · <span class="protected-status">HIDING 🛡️</span>` : "");
+
+  if(!gameOver && !awaitingChoice){
+    document.getElementById("banner").textContent =
+      current==="you" ? "Your turn — PUSH, HIDE, or RESCUE." : "Opponent's turn…";
+  }
+}
+function startTurn(who){
+  current=who;
+  // HIDE protects only until that player's next turn begins.
+  if(who==="you") youHidden=false;
+  else oppHidden=false;
+  drawn=[];
+  awaitingChoice=false;
+  render();
+  if(who==="opp") setTimeout(opponentTurn,500);
+}
+function addToStash(stash,c,who){
+  if(c.name==="Backdoor"){
+    deck.unshift(c);
+    log(`${who==="you"?"You":"Opponent"} used Backdoor and redraws.`);
+    return "redraw";
+  }
+  if(stash.length<5){
+    stash.push(c);
+    return "added";
+  }
+  const minIdx=stash.reduce((m,x,i)=>scoreContribution(x)<scoreContribution(stash[m])?i:m,0);
+  if(scoreContribution(c)>scoreContribution(stash[minIdx])){
+    const dropped=stash.splice(minIdx,1,c)[0];
+    log(`${who==="you"?"You":"Opponent"} replace ${dropped.name} with ${c.name}.`);
+    return "replaced";
+  }
+  log(`${who==="you"?"You":"Opponent"} leave ${c.name} behind.`);
+  return "ignored";
+}
+function drawThree(){
+  if(current!=="you"||gameOver||awaitingChoice)return;
+  consecutiveHides=0;
+  drawn=[];
+  while(drawn.length<3 && deck.length) drawn.push(deck.pop());
+
+  if(!drawn.length){ finishRound("The shared deck ran out."); return; }
+
+  drawn.filter(c=>c.type==="bandit").forEach(addBandit);
+  const choices=drawn.map((c,i)=>({c,i})).filter(x=>x.c.type!=="bandit");
+
+  if(gameOver)return;
+  if(!choices.length){
+    log("You PUSH and draw only Bandits. No stash card this turn.");
+    drawn=[];
+    render();
+    passTurn();
+    return;
+  }
+
+  awaitingChoice=true;
+  document.getElementById("drawn").innerHTML=drawn.map((c,i)=>
+    c.type==="bandit" ? cardHTML(c) :
+    `<button onclick="chooseDraw(${i})" style="background:none;padding:0;border:0">${cardHTML(c)}</button>`
+  ).join("");
+  document.getElementById("banner").textContent="Choose one non-Bandit card.";
+  render();
+}
+function chooseDraw(i){
+  if(current!=="you"||!awaitingChoice)return;
+  const c=drawn[i];
+  if(!c||c.type==="bandit")return;
+  awaitingChoice=false;
+  const result=addToStash(you,c,"you");
+  log(`You PUSH and choose ${c.name}.`);
+  drawn=[];
+  render();
+  if(result==="redraw"){
+    startTurn("you");
+    drawThree();
+  }else{
+    passTurn();
+  }
+}
+function hideTurn(){
+  if(current!=="you"||gameOver||awaitingChoice)return;
+  youHidden=true;
+  consecutiveHides++;
+  log("You HIDE. Your stash is protected until your next turn.");
+  render();
+  if(consecutiveHides>=2){ finishRound("Both players hid consecutively."); return; }
+  passTurn();
+}
+function rescueFromHideout(){
+  if(current!=="you"||gameOver||awaitingChoice||!hideout.length)return;
+  consecutiveHides=0;
+  awaitingChoice=true;
+  document.getElementById("drawn").innerHTML=hideout.map((c,i)=>
+    `<button onclick="chooseRescue(${i})" style="background:none;padding:0;border:0">${cardHTML(c)}</button>`
+  ).join("");
+  document.getElementById("banner").textContent="Choose a kidnapped card to RESCUE.";
+  render();
+}
+function chooseRescue(i){
+  if(current!=="you"||!awaitingChoice||!hideout[i])return;
+  const c=hideout.splice(i,1)[0];
+  awaitingChoice=false;
+  addToStash(you,c,"you");
+  drawn=[];
+  log(`You RESCUE ${c.name} from the Bandit Hideout.`);
+  render();
+  passTurn();
+}
+function passTurn(){
+  if(gameOver)return;
+  startTurn(current==="you"?"opp":"you");
+}
+function opponentTurn(){
+  if(current!=="opp"||gameOver||awaitingChoice)return;
+
+  const my=scoreHand(opp), your=scoreHand(you);
+  const danger=courage>=5;
+  const canRescue=hideout.length>0;
+
+  // AI priorities:
+  // 1) rescue a strong kidnapped creature sometimes,
+  // 2) hide when leading and danger is high,
+  // 3) hide to close a round when already ahead,
+  // 4) otherwise push once.
+  if(canRescue){
+    const bestIdx=hideout.reduce((m,c,i)=>scoreContribution(c)>scoreContribution(hideout[m])?i:m,0);
+    const best=hideout[bestIdx];
+    if(scoreContribution(best)>=4 && (opp.length<5 || scoreContribution(best)>2) && Math.random()<0.55){
+      consecutiveHides=0;
+      hideout.splice(bestIdx,1);
+      addToStash(opp,best,"opp");
+      log(`Opponent RESCUES ${best.name}.`);
+      render();
+      return setTimeout(passTurn,450);
+    }
+  }
+
+  if((danger && my>=your) || (consecutiveHides===1 && my>your && opp.length>=3)){
+    oppHidden=true;
+    consecutiveHides++;
+    log("Opponent HIDES.");
+    render();
+    if(consecutiveHides>=2) return setTimeout(()=>finishRound("Both players hid consecutively."),450);
+    return setTimeout(passTurn,450);
+  }
+
+  consecutiveHides=0;
+  let cards=[];
+  while(cards.length<3 && deck.length) cards.push(deck.pop());
+  if(!cards.length) return finishRound("The shared deck ran out.");
+
+  cards.filter(c=>c.type==="bandit").forEach(addBandit);
+  const choices=cards.filter(c=>c.type!=="bandit");
+  if(choices.length){
+    choices.sort((a,b)=>{
+      const av=(a.type==="value"?a.value:0)+(a.name==="Royal Decree"?2:0)+(a.name==="Twin Moon"?2:0);
+      const bv=(b.type==="value"?b.value:0)+(b.name==="Royal Decree"?2:0)+(b.name==="Twin Moon"?2:0);
+      return bv-av;
+    });
+    const c=choices[0];
+    const result=addToStash(opp,c,"opp");
+    log(`Opponent PUSHES and chooses ${c.name}.`);
+    render();
+    if(result==="redraw") return setTimeout(opponentTurn,350);
+  }else{
+    log("Opponent PUSHES and draws only Bandits.");
+    render();
+  }
+  setTimeout(passTurn,500);
+}
+function addBandit(b){
+  camp.push(b);
+  courage+=b.c||1;
+  log(`${b.name} joins the Camp (+${b.c||1} Courage).`);
+  if(courage>=threshold) banditAttack();
+}
+function highestValueIndex(stash){
+  let best=-1;
+  for(let i=0;i<stash.length;i++){
+    if(stash[i].type!=="value") continue;
+    if(best<0 || stash[i].value>stash[best].value) best=i;
+  }
+  return best;
+}
+function banditAttack(){
+  const a=scoreHand(you), b=scoreHand(opp);
+  let leader = a===b ? (Math.random()<.5?"you":"opp") : (a>b?"you":"opp");
+  let target=leader;
+
+  // A hiding leader cannot be raided; bandits try the other stash.
+  if((target==="you" && youHidden) || (target==="opp" && oppHidden)){
+    const other=target==="you"?"opp":"you";
+    const otherHidden=other==="you"?youHidden:oppHidden;
+    const otherStash=other==="you"?you:opp;
+    if(!otherHidden && highestValueIndex(otherStash)>=0){
+      log(`💨 The leader is HIDING, so the Bandits turn toward the other stash.`);
+      target=other;
+    }else{
+      log("💨 The Bandits work up the courage to raid, but everyone is hidden. The raid fizzles.");
+      resetCamp();
+      return;
+    }
+  }
+
+  const stash=target==="you"?you:opp;
+  const idx=highestValueIndex(stash);
+  if(idx>=0){
+    const stolen=stash.splice(idx,1)[0];
+    hideout.push(stolen);
+    log(`💥 RAID! The Bandits kidnap ${stolen.name} from ${target==="you"?"YOU":"OPPONENT"} and drag it to the Hideout.`);
+  }else{
+    log("💥 The Bandits raid, but find no creature worth kidnapping.");
+  }
+  resetCamp();
+  render();
+}
+function resetCamp(){
+  camp=[];
+  courage=0;
+}
+function finishRound(reason="Round ends."){
+  if(gameOver)return;
+  current="none";
+  awaitingChoice=false;
+  drawn=[];
+  const a=scoreHand(you), b=scoreHand(opp);
+  log(`— ${reason}`);
+  let loser=null;
+  if(a>b){
+    const gain=a-b; pScore+=gain; loser="opp";
+    log(`Round ${round}: YOU win ${a}–${b} and gain ${gain} point(s).`);
+  }else if(b>a){
+    const gain=b-a; oScore+=gain; loser="you";
+    log(`Round ${round}: OPPONENT wins ${b}–${a} and gains ${gain} point(s).`);
+  }else{
+    log(`Round ${round}: ${a}–${b} tie.`);
+    loser=roundStarter==="you"?"opp":"you"; // ties alternate initiative
+  }
+  render();
+
+  if(pScore>=15||oScore>=15){
+    gameOver=true;
+    document.getElementById("banner").textContent=pScore>oScore?"🏆 YOU WIN THE GAME!":"🏆 OPPONENT WINS THE GAME!";
+    render();
+    return;
+  }
+
+  roundStarter=loser; // loser goes first
+  setTimeout(startRound,900);
+}
+function startRound(){
+  round++;
+  you=[]; opp=[]; camp=[]; courage=0; drawn=[];
+  youHidden=false; oppHidden=false; consecutiveHides=0; awaitingChoice=false;
+  makeDeck();
+  log(`--- Round ${round} begins. ${roundStarter==="you"?"You":"Opponent"} lost/tied initiative and go first. Hideout holds ${hideout.length} card(s). ---`);
+  startTurn(roundStarter);
+}
+function newGame(){
+  pScore=0; oScore=0; round=1; gameOver=false;
+  you=[]; opp=[]; camp=[]; hideout=[]; courage=0; drawn=[];
+  youHidden=false; oppHidden=false; consecutiveHides=0; awaitingChoice=false;
+  roundStarter="you";
+  makeDeck();
+  document.getElementById("log").innerHTML="";
+  log("Welcome to Nervous Bandits v0.2. You go first.");
+  startTurn("you");
+}
+newGame();
+</script>
+</body>
+</html>
